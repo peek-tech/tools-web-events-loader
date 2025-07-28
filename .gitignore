@@ -1,0 +1,94 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# AWS CDK
+cdk/node_modules/
+cdk/cdk.out/
+cdk/*.d.ts
+cdk/*.js
+cdk/*.js.map
+
+# dbt
+dbt/target/
+dbt/dbt_packages/ 
+dbt/logs/
+dbt/profiles.yml
+
+# Logs
+*.log
+
+# Environment variables
+.env.local
+.env.*.local
+
+# Temporary files
+*.tmp
+*.temp
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Airflow
+airflow/logs/
+airflow/dags/__pycache__/
+
+# Local test data
+test_data/
+sample_data/
+
+# AWS credentials (never commit these)
+.aws/
+aws-credentials.json
