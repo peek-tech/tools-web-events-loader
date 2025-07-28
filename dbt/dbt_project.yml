@@ -1,0 +1,64 @@
+name: 'web_events_analytics'
+version: '1.0.0'
+config-version: 2
+
+# This setting configures which "profile" dbt uses for this project.
+profile: 'web_events_analytics'
+
+# These configurations specify where dbt should look for different types of files.
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Configuring models
+models:
+  web_events_analytics:
+    # Applies to all files under models/staging/
+    staging:
+      +materialized: view
+      +schema: staging
+    
+    # Applies to all files under models/intermediate/
+    intermediate:
+      +materialized: view
+      +schema: intermediate
+    
+    # Applies to all files under models/marts/
+    marts:
+      +materialized: table
+      core:
+        +schema: core
+      analytics:
+        +materialized: table
+        +schema: analytics
+        +partition_by:
+          field: event_date
+          data_type: date
+        +cluster_by: ["session_id", "anonymous_id"]
+
+# Global variables
+vars:
+  start_date: '2022-01-01'
+  # Data quality thresholds
+  min_quality_score: 0.5
+  bot_detection_enabled: true
+  # Virtual tour specific
+  virtual_tour_path_pattern: '/viewer'
+
+# Testing configurations
+tests:
+  +store_failures: true
+  +schema: test_failures
+
+# Seeds configuration
+seeds:
+  web_events_analytics:
+    +schema: seeds

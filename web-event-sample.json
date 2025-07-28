@@ -1,0 +1,27 @@
+{
+  "type": "page",
+  "properties": {
+    "title": "Peek | Virtual Tour | The Washingtons | [object Object] | 02-222",
+    "url": "https://qa-beta-tour.peek.us/viewer?token=Ynyyjo8p",
+    "path": "/viewer",
+    "hash": "",
+    "search": "token=Ynyyjo8p",
+    "width": 1920,
+    "height": 929,
+    "spaceName": "02-222",
+    "spaceId": "636d31b01be4410019a7962e",
+    "spaceType": "unit",
+    "spaceToken": "Ynyyjo8p",
+    "token": "87827f537893ffa727c6eba409f9e5d0"
+  },
+  "anonymousId": "8d6aabc7-5b28-4106-ac61-1e9b4fdb3638",
+  "secondsUtcTS": 1674840769225,
+  "os": { "name": "Windows" },
+  "referrer": "",
+  "sessionId": "19b0a5fb-3bde-4ceb-988e-67e21bbdc761",
+  "timezone": "America/Buenos_Aires",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
+  "locale": "es-ES",
+  "appId": "web-viewer-dev",
+  "app": "web-viewer"
+}

@@ -1,0 +1,26 @@
+web_events_analytics:
+  target: dev
+  outputs:
+    dev:
+      type: athena
+      s3_staging_dir: s3://peek-web-events-datalake/dbt-athena-staging/
+      s3_data_dir: s3://peek-web-events-datalake/dbt-athena-data/
+      region_name: us-east-1
+      database: peek_web_events
+      schema: analytics
+      work_group: peek-web-events-workgroup
+      threads: 4
+      num_retries: 2
+      table_type: iceberg  # Enable Iceberg table support
+    
+    prod:
+      type: redshift
+      host: "{{ env_var('REDSHIFT_HOST') }}"
+      user: "{{ env_var('REDSHIFT_USER') }}"
+      password: "{{ env_var('REDSHIFT_PASSWORD') }}"
+      port: 5439
+      dbname: webevents
+      schema: analytics
+      threads: 8
+      keepalives_idle: 0
+      search_path: analytics,public

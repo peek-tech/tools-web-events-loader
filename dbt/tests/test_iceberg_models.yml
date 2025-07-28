@@ -1,0 +1,227 @@
+version: 2
+
+tests:
+  # Tests for fct_web_events_iceberg model
+  - name: test_fct_web_events_data_quality
+    description: "Ensure web events fact table meets data quality standards"
+    model: fct_web_events_iceberg
+    tests:
+      # Uniqueness tests
+      - unique:
+          column_name: event_id
+          config:
+            severity: error
+            error_if: ">0"
+      
+      # Not null tests for critical fields
+      - not_null:
+          column_name: event_id
+      - not_null:
+          column_name: event_timestamp
+      - not_null:
+          column_name: anonymous_id
+      - not_null:
+          column_name: event_type
+      
+      # Referential integrity
+      - relationships:
+          column_name: session_id
+          to: ref('int_session_boundaries')
+          field: session_id
+          config:
+            severity: warn
+      
+      # Data quality score validation
+      - accepted_values:
+          column_name: data_quality_score
+          values: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+          quote: false
+          config:
+            where: "data_quality_score IS NOT NULL"
+      
+      # Bot detection validation
+      - accepted_values:
+          column_name: is_bot
+          values: [true, false]
+      
+      # Space type validation
+      - accepted_values:
+          column_name: space_type
+          values: ['unit', 'amenity', 'common_area', 'tour', 'unknown']
+          config:
+            severity: warn
+
+  # Tests for user_journey_analysis_iceberg model
+  - name: test_user_journey_integrity
+    description: "Validate user journey analysis data"
+    model: user_journey_analysis_iceberg
+    tests:
+      # Journey metrics validation
+      - dbt_utils.expression_is_true:
+          expression: "conversion_to_space_view BETWEEN 0 AND 1"
+          config:
+            error_if: ">0"
+      
+      - dbt_utils.expression_is_true:
+          expression: "conversion_to_engagement BETWEEN 0 AND 1"
+          config:
+            error_if: ">0"
+      
+      # Session duration validation
+      - dbt_utils.expression_is_true:
+          expression: "avg_session_duration_minutes >= 0"
+      
+      # Bounce rate validation
+      - dbt_utils.expression_is_true:
+          expression: "bounce_rate BETWEEN 0 AND 1"
+
+  # Tests for time_travel_analysis model
+  - name: test_time_travel_consistency
+    description: "Ensure time travel analysis maintains data consistency"
+    model: time_travel_analysis
+    tests:
+      # Anomaly detection validation
+      - dbt_utils.expression_is_true:
+          expression: "abs(period_over_period_change) < 10"
+          config:
+            where: "is_anomaly = false"
+            severity: warn
+      
+      # Statistical measures validation
+      - not_null:
+          column_name: rolling_avg_events
+      - not_null:
+          column_name: rolling_stddev_events
+          config:
+            where: "analysis_date >= CURRENT_DATE - 7"
+
+# Macro tests for Iceberg-specific functionality
+macros:
+  - name: test_iceberg_time_travel_macro
+    description: "Test time travel query generation"
+    tests:
+      - assert_macro_output:
+          macro: generate_time_travel_query
+          args:
+            table_name: "web_events"
+            timestamp: "2024-01-01 00:00:00"
+          expected_contains: "FOR TIMESTAMP AS OF"
+
+  - name: test_iceberg_merge_macro
+    description: "Test MERGE statement generation"
+    tests:
+      - assert_macro_output:
+          macro: iceberg_merge_incremental
+          args:
+            target_table: "fct_web_events"
+            source_table: "stg_web_events"
+            unique_key: "event_id"
+          expected_contains: ["MERGE INTO", "WHEN MATCHED", "WHEN NOT MATCHED"]
+
+# Data freshness tests
+sources:
+  - name: s3_tables
+    database: s3_tables
+    schema: analytics
+    tables:
+      - name: web_events
+        description: "Raw web events in S3 Tables"
+        freshness:
+          warn_after: {count: 2, period: hour}
+          error_after: {count: 4, period: hour}
+        loaded_at_field: processed_timestamp
+        tests:
+          - dbt_utils.recency:
+              datepart: hour
+              field: processed_timestamp
+              interval: 2
+
+# Custom generic tests
+tests:
+  - name: test_session_sequence_integrity
+    description: "Validate session event sequences are continuous"
+    sql: |
+      WITH session_gaps AS (
+        SELECT 
+          session_id,
+          session_event_sequence,
+          LAG(session_event_sequence) OVER (PARTITION BY session_id ORDER BY session_event_sequence) as prev_sequence,
+          session_event_sequence - LAG(session_event_sequence) OVER (PARTITION BY session_id ORDER BY session_event_sequence) as gap
+        FROM {{ ref('fct_web_events_iceberg') }}
+        WHERE event_date >= CURRENT_DATE - 7
+      )
+      SELECT COUNT(*) as gap_count
+      FROM session_gaps
+      WHERE gap > 1
+    config:
+      severity: warn
+      warn_if: ">10"
+      error_if: ">100"
+
+  - name: test_space_engagement_metrics
+    description: "Validate space engagement calculations"
+    sql: |
+      WITH space_metrics AS (
+        SELECT 
+          space_type,
+          COUNT(DISTINCT session_id) as sessions,
+          AVG(time_on_page_seconds) as avg_time,
+          COUNT(CASE WHEN engagement_score >= 2 THEN 1 END) * 100.0 / COUNT(*) as engagement_rate
+        FROM {{ ref('fct_web_events_iceberg') }}
+        WHERE space_type IS NOT NULL
+          AND event_date >= CURRENT_DATE - 1
+        GROUP BY space_type
+      )
+      SELECT COUNT(*) as invalid_metrics
+      FROM space_metrics
+      WHERE sessions = 0 
+        OR avg_time < 0 
+        OR engagement_rate < 0 
+        OR engagement_rate > 100
+    config:
+      error_if: ">0"
+
+  - name: test_iceberg_partition_coverage
+    description: "Ensure partitions are properly populated"
+    sql: |
+      WITH partition_stats AS (
+        SELECT 
+          event_date,
+          space_type,
+          COUNT(*) as record_count
+        FROM {{ ref('fct_web_events_iceberg') }}
+        WHERE event_date >= CURRENT_DATE - 30
+        GROUP BY event_date, space_type
+      )
+      SELECT 
+        COUNT(DISTINCT event_date) as days_with_data,
+        COUNT(DISTINCT space_type) as space_types_covered
+      FROM partition_stats
+      WHERE record_count > 0
+    config:
+      warn_if: "days_with_data < 25"
+      error_if: "space_types_covered < 3"
+
+# Performance tests
+performance_tests:
+  - name: test_query_performance_time_travel
+    description: "Validate time travel query performance"
+    sql: |
+      -- This would be run with EXPLAIN ANALYZE in production
+      SELECT COUNT(*)
+      FROM {{ ref('fct_web_events_iceberg') }} FOR TIMESTAMP AS OF (CURRENT_TIMESTAMP - INTERVAL '1' DAY)
+      WHERE event_date = CURRENT_DATE - 1
+    expected_scan_time_ms: 5000
+    expected_rows_scanned: 1000000
+
+# Schema tests
+schema_tests:
+  - name: test_iceberg_schema_evolution
+    description: "Validate schema can evolve without breaking existing queries"
+    models:
+      - fct_web_events_iceberg
+      - user_journey_analysis_iceberg
+    validations:
+      - column_data_types_match
+      - no_column_removals
+      - partition_columns_unchanged

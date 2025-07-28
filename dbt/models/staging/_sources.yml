@@ -1,0 +1,48 @@
+version: 2
+
+sources:
+  - name: s3_tables
+    description: Web events data from S3 Tables (Iceberg format)
+    database: peek_web_events
+    schema: analytics
+    tables:
+      - name: web_events
+        description: Main web events table in Iceberg format
+        meta:
+          table_format: 'iceberg'
+          location: 's3://peek-web-events-tables/namespaces/analytics/tables/web_events/'
+        columns:
+          - name: event_timestamp
+            description: Timestamp when the event occurred
+            tests:
+              - not_null
+          - name: session_id
+            description: Unique session identifier
+            tests:
+              - not_null
+          - name: anonymous_id
+            description: Anonymous user identifier for tracking across sessions
+            tests:
+              - not_null
+          - name: space_id
+            description: Unique identifier for virtual tour spaces
+          - name: data_quality_score
+            description: Score indicating data completeness and quality (0-1)
+            tests:
+              - dbt_utils.accepted_range:
+                  min_value: 0
+                  max_value: 1
+      
+      - name: session_metrics
+        description: Pre-computed session-level metrics in Iceberg format
+        meta:
+          table_format: 'iceberg'
+          location: 's3://peek-web-events-tables/namespaces/analytics/tables/session_metrics/'
+        columns:
+          - name: session_id
+            description: Unique session identifier
+            tests:
+              - not_null
+              - unique
+          - name: session_duration_seconds
+            description: Total duration of the session in seconds

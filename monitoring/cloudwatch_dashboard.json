@@ -1,0 +1,143 @@
+{
+  "widgets": [
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/Kinesis", "IncomingRecords", "StreamName", "peek-web-events-stream"],
+          ["AWS/Kinesis", "IncomingBytes", "StreamName", "peek-web-events-stream"]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Kinesis Stream Ingestion Metrics",
+        "period": 300,
+        "stat": "Sum"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/Lambda", "Invocations", "FunctionName", "KinesisProcessor"],
+          ["AWS/Lambda", "Errors", "FunctionName", "KinesisProcessor"],
+          ["AWS/Lambda", "Duration", "FunctionName", "KinesisProcessor"]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Lambda Processing Metrics",
+        "period": 300
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 6,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/Glue", "glue.driver.aggregate.numCompletedTasks", "JobName", "peek-web-events-s3-processor"],
+          ["AWS/Glue", "glue.driver.aggregate.numFailedTasks", "JobName", "peek-web-events-s3-processor"]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Glue ETL Job Performance",
+        "period": 300
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 6,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/S3", "BucketRequests", "BucketName", "peek-web-events-datalake", "FilterId", "EntireBucket"],
+          ["AWS/S3", "BucketSizeBytes", "BucketName", "peek-web-events-datalake", "StorageType", "StandardStorage"]
+        ],
+        "view": "timeSeries",
+        "region": "us-east-1",
+        "title": "S3 Data Lake Metrics",
+        "period": 3600
+      }
+    },
+    {
+      "type": "log",
+      "x": 0,
+      "y": 12,
+      "width": 24,
+      "height": 6,
+      "properties": {
+        "query": "SOURCE '/aws/lambda/KinesisProcessor'\n| fields @timestamp, @message\n| filter @message like /ERROR/\n| sort @timestamp desc\n| limit 100",
+        "region": "us-east-1",
+        "title": "Recent Lambda Errors",
+        "view": "table"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 18,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["Custom/WebEvents", "EventsProcessedPerHour"],
+          ["Custom/WebEvents", "UniqueSessionsPerHour"],
+          ["Custom/WebEvents", "DataQualityScore"]
+        ],
+        "view": "timeSeries",
+        "region": "us-east-1",
+        "title": "Business Metrics",
+        "period": 3600,
+        "stat": "Average"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 8,
+      "y": 18,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/Athena", "ProcessedBytes", "QueryType", "DDL"],
+          ["AWS/Athena", "QueryExecutionTime", "QueryType", "DML"]
+        ],
+        "view": "timeSeries",
+        "region": "us-east-1",
+        "title": "Athena Query Performance",
+        "period": 3600
+      }
+    },
+    {
+      "type": "metric",
+      "x": 16,
+      "y": 18,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/Redshift", "CPUUtilization", "ClusterIdentifier", "webevents-redshift"],
+          ["AWS/Redshift", "DatabaseConnections", "ClusterIdentifier", "webevents-redshift"]
+        ],
+        "view": "timeSeries",
+        "region": "us-east-1",
+        "title": "Redshift Cluster Metrics",
+        "period": 300
+      }
+    }
+  ]
+}
