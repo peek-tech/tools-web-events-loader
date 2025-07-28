@@ -274,12 +274,26 @@ dbt test --models staging
 dbt run-operation check_data_freshness
 ```
 
-## Support & Documentation
+## Documentation
 
-- **Architecture Docs**: `docs/architecture.md`
-- **API Reference**: `docs/api-reference.md`  
-- **Runbook**: `docs/operational-runbook.md`
-- **dbt Docs**: Available at `http://localhost:8080` after `dbt docs serve`
+### 📋 Complete System Documentation
+- **[System Architecture](docs/architecture.md)**: Comprehensive architecture overview with data flow diagrams
+- **[Deployment Guide](docs/deployment-guide.md)**: Step-by-step deployment instructions for all environments
+- **[Operational Runbook](docs/operational-runbook.md)**: Daily operations, incident response, and maintenance procedures
+- **[Data Dictionary](docs/data-dictionary.md)**: Complete field definitions, business logic, and transformations
+- **[Test Documentation](tests/README.md)**: Testing strategy, test cases, and coverage reports
+
+### 🔧 Development Resources
+- **dbt Docs**: Available at `http://localhost:8080` after running `dbt docs serve`
+- **API Reference**: Generated from code documentation
+- **Schema Definitions**: See `sql/iceberg_schemas.sql` for complete table schemas
+
+### 📊 Key Features Documentation
+- **S3 Tables/Iceberg Integration**: ACID transactions, time travel queries, schema evolution
+- **Spatial Analytics**: 3D virtual tour navigation analysis with room-level insights
+- **Data Quality Framework**: Automated scoring, bot detection, and validation
+- **Real-time Processing**: Kinesis stream processing with sub-second latency
+- **Advanced Analytics**: User journey analysis, conversion funnels, cohort retention
 
 ## Contributing
 
