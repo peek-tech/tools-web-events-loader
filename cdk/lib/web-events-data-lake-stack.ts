@@ -93,6 +93,80 @@ export class WebEventsDataLakeStack extends cdk.Stack {
       destinationKeyPrefix: 'scripts/',
     });
 
+    // S3 Bucket for Batch Operations reports
+    const batchOperationsReportsBucket = new s3.Bucket(this, 'BatchOperationsReports', {
+      bucketName: `peek-batch-operations-reports-${this.account}`,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      lifecycleRules: [
+        {
+          id: 'BatchReportsLifecycle',
+          enabled: true,
+          transitions: [
+            {
+              storageClass: s3.StorageClass.INFREQUENT_ACCESS,
+              transitionAfter: cdk.Duration.days(30),
+            },
+            {
+              storageClass: s3.StorageClass.GLACIER,
+              transitionAfter: cdk.Duration.days(90),
+            },
+          ],
+          expiration: cdk.Duration.days(365), // Delete after 1 year
+        },
+      ],
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // IAM Role for S3 Batch Operations
+    const batchOperationsRole = new iam.Role(this, 'S3BatchOperationsRole', {
+      assumedBy: new iam.ServicePrincipal('batchoperations.s3.amazonaws.com'),
+      roleName: 'S3BatchOperationsRole',
+      inlinePolicies: {
+        BatchOperationsPolicy: new iam.PolicyDocument({
+          statements: [
+            // Read inventory manifest and source objects
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                's3:GetObject',
+                's3:GetObjectVersion',
+                's3:ListBucket',
+              ],
+              resources: [
+                'arn:aws:s3:::peek-inventory-bucket',
+                'arn:aws:s3:::peek-inventory-bucket/*',
+                'arn:aws:s3:::prod-backup-web-events',
+                'arn:aws:s3:::prod-backup-web-events/*',
+              ],
+            }),
+            // Restore objects from Glacier
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                's3:RestoreObject',
+              ],
+              resources: [
+                'arn:aws:s3:::prod-backup-web-events/*',
+              ],
+            }),
+            // Write batch operations reports
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                's3:PutObject',
+                's3:PutObjectAcl',
+              ],
+              resources: [
+                batchOperationsReportsBucket.bucketArn,
+                `${batchOperationsReportsBucket.bucketArn}/*`,
+              ],
+            }),
+          ],
+        }),
+      },
+    });
+
     // IAM Role for Glue Jobs
     const glueRole = new iam.Role(this, 'GlueJobRole', {
       assumedBy: new iam.ServicePrincipal('glue.amazonaws.com'),
@@ -363,6 +437,16 @@ export class WebEventsDataLakeStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'AthenaWorkgroupName', {
       value: athenaWorkgroup.ref,
       description: 'Athena workgroup for querying web events',
+    });
+
+    new cdk.CfnOutput(this, 'BatchOperationsRoleArn', {
+      value: batchOperationsRole.roleArn,
+      description: 'IAM role ARN for S3 Batch Operations Glacier restore jobs',
+    });
+
+    new cdk.CfnOutput(this, 'BatchReportsBucketName', {
+      value: batchOperationsReportsBucket.bucketName,
+      description: 'S3 bucket for Batch Operations job reports',
     });
   }
 }

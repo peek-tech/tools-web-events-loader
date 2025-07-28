@@ -80,12 +80,27 @@ dbt run --target dev
 dbt test
 ```
 
-### 4. Process Historical Data
+### 4. Restore Glacier Data (Pre-processing)
 
 ```bash
-# Trigger historical data processing DAG
+# Create S3 Batch Operations job for Glacier restore
+aws s3control create-job \
+  --account-id YOUR_ACCOUNT_ID \
+  --operation '{"S3RestoreObject":{"ExpirationInDays":7,"GlacierJobTier":"Standard"}}' \
+  --manifest-location s3://peek-inventory-bucket/prod-backup-web-event/archived-web-events/LATEST/manifest.json \
+  --role-arn arn:aws:iam::YOUR_ACCOUNT_ID:role/S3BatchOperationsRole \
+  --priority 100
+
+# Monitor restore job status
+aws s3control describe-job --account-id YOUR_ACCOUNT_ID --job-id JOB_ID
+```
+
+### 5. Process Historical Data
+
+```bash
+# Wait for Glacier restore completion (3-5 days), then trigger processing
 airflow dags trigger web_events_historical_processing \
-  --conf '{"source_bucket": "your-source-bucket"}'
+  --conf '{"source_bucket": "prod-backup-web-events"}'
 ```
 
 ## Data Flow
@@ -97,8 +112,15 @@ airflow dags trigger web_events_historical_processing \
 4. **S3 Raw Zone** - Partitioned storage by date/hour
 5. **Athena/Redshift** - Real-time querying capabilities
 
+### Historical Data Migration (with Glacier Restore)
+1. **S3 Inventory Analysis** - Daily inventory manifest identifies Glacier-stored objects
+2. **S3 Batch Operations Restore** - Automated Glacier restore using inventory manifest
+3. **Restore Monitoring** - 3-5 day restore process with job status tracking
+4. **Glue ETL Jobs** - Data parsing, quality scoring, and Iceberg format conversion
+5. **S3 Tables/Iceberg** - Final storage in queryable Iceberg format
+
 ### Batch Processing  
-1. **Historical S3 Data** - 75GB+ of existing web events
+1. **Historical S3 Data** - 800GB+ of existing web events (mixed storage classes)
 2. **Glue ETL Jobs** - Data parsing, quality scoring, and enrichment
 3. **S3 Curated Zone** - Clean, analysis-ready data
 4. **dbt Transformations** - Business logic and analytics models
@@ -274,12 +296,26 @@ dbt test --models staging
 dbt run-operation check_data_freshness
 ```
 
+**4. S3 Batch Operations Glacier Restore Issues**
+```bash
+# Check batch operations job status
+aws s3control list-jobs --account-id YOUR_ACCOUNT_ID --job-statuses Active,Complete,Failed
+aws s3control describe-job --account-id YOUR_ACCOUNT_ID --job-id JOB_ID
+
+# Verify restore status of individual objects
+aws s3 head-object --bucket prod-backup-web-events --key path/to/file.json
+
+# Check inventory manifest validity
+aws s3 ls s3://peek-inventory-bucket/prod-backup-web-event/archived-web-events/ --recursive
+```
+
 ## Documentation
 
 ### 📋 Complete System Documentation
 - **[System Architecture](docs/architecture.md)**: Comprehensive architecture overview with data flow diagrams
 - **[Deployment Guide](docs/deployment-guide.md)**: Step-by-step deployment instructions for all environments
 - **[Operational Runbook](docs/operational-runbook.md)**: Daily operations, incident response, and maintenance procedures
+- **[Glacier Restore Guide](docs/glacier-restore-guide.md)**: S3 Batch Operations guide for restoring archived data from Glacier
 - **[Data Dictionary](docs/data-dictionary.md)**: Complete field definitions, business logic, and transformations
 - **[Test Documentation](tests/README.md)**: Testing strategy, test cases, and coverage reports
 
