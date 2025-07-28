@@ -1,17 +1,17 @@
-# Web Events Data Lake System
+# Web Events Data Loader
 
-A comprehensive data lake architecture for processing and analyzing web event data from virtual tours and website interactions, designed to support clickstream analysis and user journey tracking.
+A comprehensive AWS S3 Tables/Iceberg data loader for processing and analyzing web event data from virtual tours and website interactions, designed to support clickstream analysis and user journey tracking.
 
 ## Architecture Overview
 
-This system implements a modern Lambda Architecture pattern with real-time and batch processing capabilities:
+This system implements a modern Lambda Architecture pattern with real-time and batch processing capabilities using AWS S3 Tables with Apache Iceberg:
 
 - **Ingestion Layer**: AWS Kinesis streams for real-time events + S3 for historical data
 - **Processing Layer**: AWS Glue ETL jobs + Lambda functions for data transformation  
-- **Storage Layer**: S3-based data lake with Raw → Curated → Analytics zones
-- **Analytics Layer**: Amazon Athena for ad-hoc queries + Redshift for structured analytics
-- **Orchestration**: Apache Airflow for workflow management
-- **Transformation**: dbt for data modeling and analytics
+- **Storage Layer**: AWS S3 Tables with Iceberg format for ACID transactions and time travel
+- **Analytics Layer**: Amazon Athena with Iceberg support for high-performance queries
+- **Orchestration**: Apache Airflow for workflow management and table maintenance
+- **Transformation**: dbt for data modeling and analytics with Iceberg table support
 
 ## Project Structure
 

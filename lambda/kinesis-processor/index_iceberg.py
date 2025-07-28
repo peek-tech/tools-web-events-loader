@@ -79,26 +79,26 @@ def lambda_handler(event: Dict, context: Any) -> Dict:
 def enrich_event_for_iceberg(event_data: Dict, kinesis_data: Dict) -> Dict:
     """
     Enrich web event with processing metadata for Iceberg format
-    Handles both direct web events and MongoDB document structure
+    Handles both legacy event structure and nested eventData structure
     """
     try:
         current_time = datetime.utcnow()
         
-        # Handle MongoDB document structure if present
+        # Handle nested document structure if present
         if 'eventData' in event_data:
-            # MongoDB structure: extract nested eventData
-            mongodb_data = event_data
-            event_data = mongodb_data['eventData']
-            metadata = mongodb_data.get('metadata', {})
+            # Nested structure: extract eventData payload
+            nested_document = event_data  
+            event_data = nested_document['eventData']
+            metadata = nested_document.get('metadata', {})
             
-            # MongoDB metadata
-            mongodb_id = str(mongodb_data.get('_id', {}).get('$oid', ''))
-            created_at = mongodb_data.get('createdAt', {}).get('$date')
-            updated_at = mongodb_data.get('updatedAt', {}).get('$date')
+            # Document metadata
+            document_id = str(nested_document.get('_id', {}).get('$oid', ''))
+            created_at = nested_document.get('createdAt', {}).get('$date')
+            updated_at = nested_document.get('updatedAt', {}).get('$date')
         else:
             # Direct web event structure
             metadata = {}
-            mongodb_id = None
+            document_id = None
             created_at = None
             updated_at = None
         
@@ -182,12 +182,12 @@ def enrich_event_for_iceberg(event_data: Dict, kinesis_data: Dict) -> Dict:
             # Raw properties for extensibility
             'properties_json': json.dumps(properties),
             
-            # NEW: MongoDB metadata for data lineage
-            'mongodb_id': mongodb_id,
-            'created_at': parse_mongodb_timestamp(created_at),
-            'updated_at': parse_mongodb_timestamp(updated_at),
+            # Document metadata for data lineage
+            'document_id': document_id,
+            'created_at': parse_document_timestamp(created_at),
+            'updated_at': parse_document_timestamp(updated_at),
             
-            # Data quality indicators (enhanced for MongoDB structure)
+            # Data quality indicators (enhanced for nested structure)
             'has_space_context': bool(properties.get('spaceId') or page_context.get('spaceId')),
             'is_virtual_tour_page': (page_context.get('path', '') or properties.get('path', '')).startswith('/viewer'),
             'data_quality_score': calculate_data_quality_score_enhanced(event_data, properties, page_context),
@@ -230,8 +230,8 @@ def extract_coordinates(coordinates_data) -> Dict:
     except (AttributeError, TypeError):
         return None
 
-def parse_mongodb_timestamp(timestamp_data) -> str:
-    """Parse MongoDB timestamp to ISO string"""
+def parse_document_timestamp(timestamp_data) -> str:
+    """Parse document timestamp to ISO string"""
     if not timestamp_data:
         return None
     
@@ -246,7 +246,7 @@ def parse_mongodb_timestamp(timestamp_data) -> str:
         return None
 
 def calculate_data_quality_score_enhanced(event_data: Dict, properties: Dict, page_context: Dict) -> float:
-    """Enhanced data quality score calculation for MongoDB structure"""
+    """Enhanced data quality score calculation for nested event structure"""
     score = 1.0
     
     # Core identifiers
